@@ -22,7 +22,7 @@ describe("Oracle Contract", function () {
     await governanceToken.mint(ownerAddress, ethers.parseEther("1000"));
     await governanceToken.mint(addr1Address, ethers.parseEther("1000"));
     await governanceToken.mint(addr2Address, ethers.parseEther("1000"));
-    
+
     // Deploy Oracle contract
     const OracleFactory = await ethers.getContractFactory("Oracle");
     oracle = await OracleFactory.deploy(await governanceToken.getAddress(), ownerAddress);
@@ -103,12 +103,87 @@ describe("Oracle Contract", function () {
     await expect(oracle.getAveragePrice()).to.be.revertedWith("No staked tokens");
   });
 
+  it("Should return the count after stake and voters", async function () {
+    await oracle.connect(addr1).stake(ethers.parseEther("100"));
+    await oracle.connect(addr1).vote(ethers.parseEther("200"));
+
+    await oracle.connect(addr2).stake(ethers.parseEther("200"));
+    await oracle.connect(addr2).vote(ethers.parseEther("300"));
+
+    expect(await oracle.getVoteCount()).to.equal("2");
+  });
+
+  it("Should return the count after unstake", async function () {
+    await oracle.connect(addr1).stake(ethers.parseEther("100"));
+    await oracle.connect(addr1).vote(ethers.parseEther("200"));
+
+    await oracle.connect(addr2).stake(ethers.parseEther("200"));
+    await oracle.connect(addr2).vote(ethers.parseEther("300"));
+
+    await oracle.connect(addr2).unstake(ethers.parseEther("200"));
+
+    expect(await oracle.getVoteCount()).to.equal("1");
+  });
+
+
   it("Should allow only the owner to perform owner-specific functions", async function () {
     // Example test if you add admin-only functionality in your contract.
     // Replace with real owner-only logic if implemented in the contract.
-      await expect(oracle.connect(addr1).transferOwnership(addr1Address)).to.be.revertedWithCustomError(
-        oracle,
-        "OwnableUnauthorizedAccount"
-      );
+    await expect(oracle.connect(addr1).transferOwnership(addr1Address)).to.be.revertedWithCustomError(
+      oracle,
+      "OwnableUnauthorizedAccount"
+    );
+  });
+
+  it("Should return staked tokens by voter", async function () {
+    await oracle.connect(addr1).stake(ethers.parseEther("100"));
+    await oracle.connect(addr1).vote(ethers.parseEther("200"));
+
+    await oracle.connect(addr2).stake(ethers.parseEther("200"));
+    await oracle.connect(addr2).vote(ethers.parseEther("300"));
+
+    expect(await oracle.getStakedVoter(addr1)).to.equal(ethers.parseEther("100"));
+  });
+
+  it("Should return voted price by voter", async function () {
+    await oracle.connect(addr1).stake(ethers.parseEther("100"));
+    await oracle.connect(addr1).vote(ethers.parseEther("200"));
+
+    await oracle.connect(addr2).stake(ethers.parseEther("200"));
+    await oracle.connect(addr2).vote(ethers.parseEther("300"));
+
+    expect(await oracle.getPriceVoter(addr1)).to.equal(ethers.parseEther("200"));
+  });
+
+  it("Should return Toal Staked", async function () {
+    await oracle.connect(addr1).stake(ethers.parseEther("100"));
+
+    await oracle.connect(addr2).stake(ethers.parseEther("250"));
+    await oracle.connect(addr2).vote(ethers.parseEther("300"));
+
+    expect(await oracle.getTotalStaked()).to.equal(ethers.parseEther("350"));
+  });
+
+  it("should calculate TWAP correctly", async function () {
+    // Stake tokens and vote on a price
+    await oracle.connect(addr1).stake(ethers.parseEther("500"));
+    await oracle.connect(addr1).vote(ethers.parseEther("3000"));
+
+    // Simulate time passing
+    await ethers.provider.send("evm_increaseTime", [200]); // Increase time by 1 hour
+    await ethers.provider.send("evm_mine"); // Mine a new block
+
+    // Stake and vote again
+    await oracle.connect(addr1).vote(ethers.parseEther("3200"));
+
+    // Simulate time passing
+    await ethers.provider.send("evm_increaseTime", [50]); // Increase time by 1 hour
+    await ethers.provider.send("evm_mine"); // Mine a new block
+
+    await oracle.connect(addr1).vote(ethers.parseEther("3150"));
+
+    // Check TWAP
+    const twap = await oracle.getTWAP();
+    expect(twap).to.be.closeTo(ethers.parseEther("3040"), ethers.parseEther("1")); // ~350
   });
 });
