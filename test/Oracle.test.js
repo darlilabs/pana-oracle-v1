@@ -186,4 +186,42 @@ describe("Oracle Contract", function () {
     const twap = await oracle.getTWAP();
     expect(twap).to.be.closeTo(ethers.parseEther("3040"), ethers.parseEther("1")); // ~350
   });
+
+  it("should reset TWAP", async function () {
+    // Stake tokens and vote on a price
+    await oracle.connect(addr1).stake(ethers.parseEther("500"));
+    await oracle.connect(addr1).vote(ethers.parseEther("3300"));
+
+    // Simulate time passing
+    await ethers.provider.send("evm_increaseTime", [200]); // Increase time by 1 hour
+    await ethers.provider.send("evm_mine"); // Mine a new block
+
+    // Stake and vote again
+    await oracle.connect(addr1).vote(ethers.parseEther("3200"));
+
+
+    // reset TWAP
+    await oracle.resetTWAP();
+
+
+    await oracle.connect(addr1).vote(ethers.parseEther("3000"));
+
+    // Simulate time passing
+    await ethers.provider.send("evm_increaseTime", [200]); // Increase time by 1 hour
+    await ethers.provider.send("evm_mine"); // Mine a new block
+
+    // Stake and vote again
+    await oracle.connect(addr1).vote(ethers.parseEther("3200"));
+
+
+    // Simulate time passing
+    await ethers.provider.send("evm_increaseTime", [50]); // Increase time by 1 hour
+    await ethers.provider.send("evm_mine"); // Mine a new block
+
+    await oracle.connect(addr1).vote(ethers.parseEther("3150"));
+
+    // Check TWAP
+    const twap = await oracle.getTWAP();
+    expect(twap).to.be.closeTo(ethers.parseEther("3040"), ethers.parseEther("2")); // ~350
+  });
 });

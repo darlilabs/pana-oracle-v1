@@ -135,6 +135,7 @@ contract Oracle is Ownable {
     }
 
     function getTWAP() public view returns (uint256) {
+        require(cumulativeTime > 0, "No Elapsed time");
         return cumulativePriceTime / cumulativeTime;
     }
 
