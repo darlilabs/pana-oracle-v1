@@ -1,4 +1,8 @@
 # Pana Oracle v1
+<p align="center">
+<image src="https://raw.githubusercontent.com/darlilabs/.github/refs/heads/main/asset/darli-github.png" width = "150">
+</p>
+
 The Darli Pana Price Feed is a Solidity implementation of an immutable Oracle Factory contract that allows anyone to deploy a new Oracle. Each Oracle contract allows Darli governance token holders to participate in price voting by staking tokens in a pool. The Oracle keeps track of staked tokens and allows Darli token holders to vote on a price, which can then be retrieved by other contracts.
 
 ## Structure
